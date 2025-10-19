@@ -1,0 +1,6 @@
+name: Fragments
+version: '1.0.0'
+main: com.jolly.fragments.Fragments
+api-version: '1.21'
+depend: [PlayerPoints]
+folia-supported: true

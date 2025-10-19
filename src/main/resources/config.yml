@@ -1,0 +1,3 @@
+ppm: 1 #How many points given
+rate: 1 #Frequency in minutes (1 = gives points every minute, 0.5 = every 30s)
+currencyName: "Fragment" #Better if singular, point name
