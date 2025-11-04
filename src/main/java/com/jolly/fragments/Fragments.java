@@ -1,97 +1,87 @@
 package com.jolly.fragments;
 
-import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import com.jolly.fragments.commands.PointsShopCommand;
+import com.jolly.fragments.gui.PointsShopGUI;
+import com.jolly.fragments.managers.RewardManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.black_ixx.playerpoints.PlayerPoints;
-import org.black_ixx.playerpoints.PlayerPointsAPI;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.black_ixx.playerpoints.PlayerPoints;
+import org.black_ixx.playerpoints.PlayerPointsAPI;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
-public final class Fragments extends JavaPlugin implements Listener {
+public class Fragments extends JavaPlugin {
+
     private PlayerPointsAPI ppAPI;
-    private int ppm;
-    private int rate;
-    private String currencyName;
-    private final Map<UUID, ScheduledTask> rewardTasks = new HashMap<>();
+    private RewardManager rewardManager;
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
         FileConfiguration config = getConfig();
-        ppm = config.getInt("ppm");
-        rate = config.getInt("rate");
-        currencyName = config.getString("currencyName");
-        try {
-            if (Bukkit.getPluginManager().isPluginEnabled("PlayerPoints")) {
-                this.ppAPI = PlayerPoints.getInstance().getAPI();
-            }
-            if (this.ppAPI != null) {
-                this.getLogger().info("Fragments have been enabled!");
-            }
-        } catch (Exception e) {
-            getLogger().severe("❌ Failed to initialize PlayerPointsAPI: " + e.getMessage());
-            e.printStackTrace();
-            getServer().getPluginManager().disablePlugin(this);
+
+        // connect to PlayerPoints
+        if (!Bukkit.getPluginManager().isPluginEnabled("PlayerPoints")) {
+            getLogger().severe("❌ PlayerPoints not found! Disabling plugin.");
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
         }
-        getLogger().info("Loaded config: ppm=" + ppm + ", rate=" + rate + ", currencyName=" + currencyName);
-        Bukkit.getPluginManager().registerEvents(this, this);
+
+        this.ppAPI = PlayerPoints.getInstance().getAPI();
+
+        // create and register reward manager
+        rewardManager = new RewardManager(this);
+        Bukkit.getPluginManager().registerEvents(rewardManager, this);
+
+        if (config.getBoolean("shop-enabled")) {
+            PointsShopGUI shopGUI = new PointsShopGUI(this);
+            Bukkit.getPluginManager().registerEvents(shopGUI, this);
+            getCommand("pointsshop").setExecutor(new PointsShopCommand(this, shopGUI));
+        }
+
+        getLogger().info("✅ Fragments enabled and ready!");
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("Disabling Fragments plugin...");
-        for (ScheduledTask task : rewardTasks.values()) {
-            try {
-                task.cancel();
-            } catch (Exception ignored) {}
-        }
-        rewardTasks.clear();
-        getLogger().info("All reward timers stopped successfully!");
+        if (rewardManager != null) rewardManager.shutdown();
     }
 
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        UUID UUID = player.getUniqueId();
-        if (rewardTasks.containsKey(UUID)) {
-            rewardTasks.get(UUID).cancel();
-        }
-        getLogger().info(ChatColor.GOLD + player.getName() + " joined the server! They wil now start receiving " + currencyName + "s.");
-        ScheduledTask task = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, (t) -> {
-            if (!player.isOnline()) {
-                t.cancel();
-                rewardTasks.remove(UUID);
-                return;
-            }
-            ppAPI.give(UUID, ppm);
-            player.sendActionBar(mm("<gold>You have received </gold><bold><aqua>" + ppm + "</aqua></bold> <gold>" + currencyName + "/s</gold>"));
-        }, 1L, (20L * 60L) * rate);
-        rewardTasks.put(UUID, task);
+    public PlayerPointsAPI getPointsAPI() {
+        return ppAPI;
     }
 
-    @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        UUID uuid = event.getPlayer().getUniqueId();
-        ScheduledTask task = rewardTasks.remove(uuid);
-        if (task != null) {
-            task.cancel();
-        }
+    public String getCurrencyName() {
+        return getConfig().getString("currencyName", "point");
     }
 
-    private Component mm(String message) {
-        return MiniMessage.miniMessage().deserialize(
-                ChatColor.translateAlternateColorCodes('&', message != null ? message : "")
-        );
+    public Component mm(String message) {
+        return MiniMessage.miniMessage().deserialize(ChatColor.translateAlternateColorCodes('&', message));
+    }
+
+    public String mmPlain(String message) {
+        Component component = MiniMessage.miniMessage().deserialize(ChatColor.translateAlternateColorCodes('&', message));
+        return PlainTextComponentSerializer.plainText().serialize(component);
+    }
+
+    public void addPoints(Player player, int amount) {
+        UUID uuid = player.getUniqueId();
+        this.getPointsAPI().give(uuid, amount);
+    }
+
+    public void removePoints(Player player, int amount) {
+        UUID uuid = player.getUniqueId();
+        this.getPointsAPI().take(uuid, amount);
+    }
+
+    public int getPoints(Player player) {
+        UUID uuid = player.getUniqueId();
+        return this.getPointsAPI().look(uuid);
     }
 }

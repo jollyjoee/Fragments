@@ -4,3 +4,12 @@ main: com.jolly.fragments.Fragments
 api-version: '1.21'
 depend: [PlayerPoints]
 folia-supported: true
+commands:
+  pointsshop:
+    description: Sends you to the hub server
+    usage: /pointsshop
+    aliases: [ps]
+permissions:
+  fragments.shop:
+    description: Allows opening of player shop
+    default: op

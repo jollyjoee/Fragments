@@ -1,3 +1,31 @@
-ppm: 1 #How many points given
+reward: 1 #How many points given
 rate: 1 #Frequency in minutes (1 = gives points every minute, 0.5 = every 30s)
 currencyName: "Fragment" #Better if singular, point name
+
+#Shop module /pointsshop or /ps
+shop-enabled: true
+gui:
+  name: "<blue><b>Fragment Key shop" #gui title bar
+  rows: 1
+  items:
+    example:
+      slot: 3 #indexed, so slot counting starts from 0
+      name: "<blue><b>Fragment Basic Key" #item name
+      material: "TRIPWIRE_HOOK" #item material, should match vanilla minecraft materials
+      enchantments:
+        - "UNBREAKING:3"
+      enchant-glint: true #fake enchant glint if you dont want any enchantments but want a glint
+      hide-enchants: true #remove enchantment from lore
+      commands:
+        - "crates give v Fall 1 %player%" #or give %player% diamond 1
+      price: 100 #price of this item <- USES PLAYERPOINTS(the dependency)
+    example2:
+      slot: 5
+      name: "<dark_purple><b>Fragment Advanced Key"
+      material: "TRIPWIRE_HOOK"
+      enchantments: []
+      enchant-glint: true
+      hide-enchants: false
+      commands:
+        - "crates give v Fall 1 %player%"
+      price: 100
